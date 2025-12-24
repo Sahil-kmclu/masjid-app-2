@@ -1,6 +1,6 @@
 import './Sidebar.css';
 
-function Sidebar({ currentView, onNavigate, isOpen, onClose, isReadOnly, onLogout }) {
+function Sidebar({ currentView, onNavigate, isOpen, onClose, isReadOnly, onLogout, currentTheme, onToggleTheme }) {
     const menuItems = [
         { id: 'dashboard', label: 'Dashboard', icon: '📊', group: 'General' },
         { id: 'mosque-profile', label: 'Mosque Profile', icon: '⚙️', group: 'General' },
@@ -10,8 +10,7 @@ function Sidebar({ currentView, onNavigate, isOpen, onClose, isReadOnly, onLogou
         { id: 'add-member', label: 'Add Member', icon: '➕', group: 'Members' },
 
         // General Donations
-        { id: 'record-payment', label: 'Record Payment', icon: '💰', group: 'Donations' },
-        { id: 'pending', label: 'Pending Payments', icon: '⏰', group: 'Donations' },
+        // { id: 'record-payment', label: 'Record Payment', icon: '💰', group: 'Donations' },
 
         // Imam Salary
         { id: 'imam-salary', label: 'Imam Salary', icon: '🕌', group: 'Imam Salary' },
@@ -78,6 +77,13 @@ function Sidebar({ currentView, onNavigate, isOpen, onClose, isReadOnly, onLogou
                     ))}
                     
                     <div className="sidebar-group" style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '10px' }}>
+                        <button
+                            className="sidebar-item"
+                            onClick={onToggleTheme}
+                        >
+                            <span className="sidebar-icon">{currentTheme === 'dark' ? '☀️' : '🌙'}</span>
+                            <span className="sidebar-label">{currentTheme === 'dark' ? 'Light Mode' : 'Dark Mode'}</span>
+                        </button>
                         <button
                             className="sidebar-item"
                             onClick={onLogout}

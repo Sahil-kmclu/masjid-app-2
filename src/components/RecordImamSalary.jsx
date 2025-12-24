@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './RecordPayment.css';
 
-function RecordImamSalary({ members, onAddPayment }) {
+function RecordImamSalary({ members, imamSalaryPayments = [], onAddPayment }) {
     const currentDate = new Date();
     const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
     const minDate = '2020-09';
@@ -54,6 +54,16 @@ function RecordImamSalary({ members, onAddPayment }) {
             const sep2020 = new Date('2020-09-01');
             if (selectedMonth < sep2020) {
                 newErrors.month = 'Imam salary tracking starts from September 2020';
+            } else if (formData.memberId) {
+                // Check for duplicate payment
+                const isDuplicate = imamSalaryPayments.some(p => 
+                    p.memberId === formData.memberId && 
+                    p.month === formData.month
+                );
+
+                if (isDuplicate) {
+                    newErrors.month = 'Payment already done this month for this member';
+                }
             }
         }
 

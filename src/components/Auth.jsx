@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import './Auth.css';
 
-function Auth({ onLogin }) {
+function Auth({ onLogin, currentTheme, onToggleTheme }) {
     const [mode, setMode] = useState('login'); // login, register, guest-login, super-admin-login
     const [formData, setFormData] = useState({
         mosqueName: '',
@@ -16,6 +16,11 @@ function Auth({ onLogin }) {
     const [adminCreds, setAdminCreds] = useState({ username: '', password: '' });
     const [error, setError] = useState('');
     const [mosques, setMosques] = useState([]);
+    
+    // Forgot Password State
+    const [forgotStep, setForgotStep] = useState(1); // 1: Email, 2: OTP, 3: New Password
+    const [generatedOtp, setGeneratedOtp] = useState('');
+    const [otpInput, setOtpInput] = useState('');
 
     useEffect(() => {
         // Reload mosques every time mode changes or component mounts
@@ -146,9 +151,220 @@ function Auth({ onLogin }) {
         }
     };
 
+    const handleForgotPassword = (e) => {
+        e.preventDefault();
+        
+        // Step 1: Send OTP
+        if (forgotStep === 1) {
+            const mosqueIndex = mosques.findIndex(m => 
+                (m.email === formData.email || m.phone === formData.email)
+            );
+
+            if (mosqueIndex === -1) {
+                setError('No account found with this Email or Phone');
+                return;
+            }
+
+            // Generate 4 digit OTP
+            const otp = Math.floor(1000 + Math.random() * 9000).toString();
+            setGeneratedOtp(otp);
+            
+            // Simulate sending OTP
+            alert(`Your OTP for Password Reset is: ${otp}`);
+            console.log('Generated OTP:', otp);
+            
+            setForgotStep(2);
+            setError('');
+            return;
+        }
+
+        // Step 2: Verify OTP
+        if (forgotStep === 2) {
+            if (otpInput !== generatedOtp) {
+                setError('Invalid OTP. Please try again.');
+                return;
+            }
+            
+            setForgotStep(3);
+            setError('');
+            return;
+        }
+
+        // Step 3: Reset Password
+        if (forgotStep === 3) {
+            if (formData.password !== formData.confirmPassword) {
+                setError('Passwords do not match');
+                return;
+            }
+
+            const mosqueIndex = mosques.findIndex(m => 
+                (m.email === formData.email || m.phone === formData.email)
+            );
+
+            if (mosqueIndex === -1) {
+                setError('Error finding account. Please try again.');
+                setForgotStep(1);
+                return;
+            }
+
+            const mosque = mosques[mosqueIndex];
+            
+            // Update password
+            const updatedMosque = { ...mosque, password: formData.password };
+            const updatedMosques = [...mosques];
+            updatedMosques[mosqueIndex] = updatedMosque;
+            
+            localStorage.setItem('registered_mosques', JSON.stringify(updatedMosques));
+            setMosques(updatedMosques);
+            
+            alert('Password reset successful! Please login with your new password.');
+            setMode('login');
+            setForgotStep(1);
+            setGeneratedOtp('');
+            setOtpInput('');
+            setFormData({ ...formData, password: '', confirmPassword: '', secretCode: '' });
+        }
+    };
+
+    if (mode === 'forgot-password') {
+        return (
+            <div className="auth-container">
+                <div className="auth-theme-toggle">
+                    <button 
+                        className="theme-toggle-btn" 
+                        onClick={onToggleTheme}
+                        aria-label="Toggle Theme"
+                    >
+                        {currentTheme === 'dark' ? '☀️' : '🌙'}
+                    </button>
+                </div>
+                <div className="auth-card">
+                    <button className="back-btn" onClick={() => {
+                        setMode('login');
+                        setForgotStep(1);
+                        setGeneratedOtp('');
+                        setOtpInput('');
+                    }}>
+                        ← Back to Login
+                    </button>
+                    <div className="auth-header">
+                        <span className="auth-logo">🔐</span>
+                        <h2 className="auth-title">Reset Password</h2>
+                        <p className="auth-subtitle">
+                            {forgotStep === 1 && "Enter your email or phone to receive OTP"}
+                            {forgotStep === 2 && "Enter the 4-digit OTP sent to you"}
+                            {forgotStep === 3 && "Create a new password"}
+                        </p>
+                    </div>
+
+                    <form className="auth-form" onSubmit={handleForgotPassword}>
+                        {error && <div className="error-message">{error}</div>}
+                        
+                        {forgotStep === 1 && (
+                            <div className="form-group">
+                                <label>Email / Phone</label>
+                                <input
+                                    type="text"
+                                    name="email"
+                                    className="form-input"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    placeholder="Enter registered email or phone"
+                                    required
+                                    autoFocus
+                                />
+                            </div>
+                        )}
+
+                        {forgotStep === 2 && (
+                            <div className="form-group">
+                                <label>OTP Code</label>
+                                <input
+                                    type="text"
+                                    className="form-input"
+                                    value={otpInput}
+                                    onChange={(e) => {
+                                        // Allow only numbers and max 4 digits
+                                        const val = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                        setOtpInput(val);
+                                        setError('');
+                                    }}
+                                    placeholder="Enter 4-digit OTP"
+                                    required
+                                    autoFocus
+                                    style={{ letterSpacing: '0.5em', textAlign: 'center', fontSize: '1.2rem' }}
+                                />
+                                <div style={{ textAlign: 'center', marginTop: '10px' }}>
+                                    <button 
+                                        type="button" 
+                                        className="text-btn"
+                                        onClick={() => {
+                                            const otp = Math.floor(1000 + Math.random() * 9000).toString();
+                                            setGeneratedOtp(otp);
+                                            alert(`Your New OTP is: ${otp}`);
+                                        }}
+                                        style={{ color: 'var(--primary-color)', fontSize: '0.9rem', background: 'none', border: 'none', cursor: 'pointer' }}
+                                    >
+                                        Resend OTP
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {forgotStep === 3 && (
+                            <>
+                                <div className="form-group">
+                                    <label>New Password</label>
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        className="form-input"
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        placeholder="Enter new password"
+                                        required
+                                        autoFocus
+                                    />
+                                </div>
+
+                                <div className="form-group">
+                                    <label>Confirm New Password</label>
+                                    <input
+                                        type="password"
+                                        name="confirmPassword"
+                                        className="form-input"
+                                        value={formData.confirmPassword}
+                                        onChange={handleChange}
+                                        placeholder="Confirm new password"
+                                        required
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                            {forgotStep === 1 && "Send OTP"}
+                            {forgotStep === 2 && "Verify OTP"}
+                            {forgotStep === 3 && "Reset Password"}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
     if (mode === 'super-admin-login') {
         return (
             <div className="auth-container">
+                <div className="auth-theme-toggle">
+                    <button 
+                        className="theme-toggle-btn" 
+                        onClick={onToggleTheme}
+                        aria-label="Toggle Theme"
+                    >
+                        {currentTheme === 'dark' ? '☀️' : '🌙'}
+                    </button>
+                </div>
                 <div className="auth-card">
                     <button className="back-btn" onClick={() => setMode('login')}>
                         ← Back to Login
@@ -204,6 +420,15 @@ function Auth({ onLogin }) {
     if (mode === 'guest-login') {
         return (
             <div className="auth-container">
+                <div className="auth-theme-toggle">
+                    <button 
+                        className="theme-toggle-btn" 
+                        onClick={onToggleTheme}
+                        aria-label="Toggle Theme"
+                    >
+                        {currentTheme === 'dark' ? '☀️' : '🌙'}
+                    </button>
+                </div>
                 <div className="auth-card">
                     <button className="back-btn" onClick={() => setMode('login')}>
                         ← Back to Login
@@ -243,6 +468,15 @@ function Auth({ onLogin }) {
 
     return (
         <div className="auth-container">
+            <div className="auth-theme-toggle">
+                <button 
+                    className="theme-toggle-btn" 
+                    onClick={onToggleTheme}
+                    aria-label="Toggle Theme"
+                >
+                    {currentTheme === 'dark' ? '☀️' : '🌙'}
+                </button>
+            </div>
             <div className="auth-card">
                 <div className="auth-header">
                     <span className="auth-logo">🕌</span>
@@ -337,6 +571,25 @@ function Auth({ onLogin }) {
                             placeholder="Enter password"
                             required
                         />
+                        {mode === 'login' && (
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '6px' }}>
+                                <button 
+                                    type="button"
+                                    className="text-btn" 
+                                    onClick={() => { setMode('forgot-password'); setError(''); }}
+                                    style={{ 
+                                        fontSize: '0.85rem', 
+                                        color: 'var(--primary-color)', 
+                                        background: 'none', 
+                                        border: 'none', 
+                                        cursor: 'pointer',
+                                        fontWeight: 500
+                                    }}
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {mode === 'register' && (
@@ -363,9 +616,41 @@ function Auth({ onLogin }) {
                     <button className="guest-access-btn" onClick={() => setMode('guest-login')}>
                         👁️ View as Guest (Read Only)
                     </button>
-                    <div style={{ marginTop: '10px', fontSize: '0.8rem' }}>
-                        <button className="text-btn" onClick={() => setMode('super-admin-login')} style={{ color: '#94a3b8' }}>
-                            Owner Login
+                    
+                    <div style={{ 
+                        marginTop: '24px', 
+                        paddingTop: '20px', 
+                        borderTop: '1px solid var(--border-color)',
+                        display: 'flex',
+                        justifyContent: 'center'
+                    }}>
+                        <button 
+                            className="text-btn owner-btn" 
+                            onClick={() => setMode('super-admin-login')} 
+                            style={{ 
+                                color: 'var(--text-muted)', 
+                                fontSize: '0.85rem', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: '8px',
+                                background: 'none',
+                                border: 'none',
+                                cursor: 'pointer',
+                                opacity: 0.8,
+                                transition: 'all 0.2s',
+                                padding: '8px 16px',
+                                borderRadius: '6px'
+                            }}
+                            onMouseOver={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                                e.currentTarget.style.background = 'var(--bg-secondary)';
+                            }}
+                            onMouseOut={(e) => {
+                                e.currentTarget.style.opacity = '0.8';
+                                e.currentTarget.style.background = 'none';
+                            }}
+                        >
+                            <span>🔒</span> Owner Login
                         </button>
                     </div>
                 </div>

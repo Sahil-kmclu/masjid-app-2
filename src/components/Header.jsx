@@ -1,6 +1,6 @@
 import './Header.css';
 
-function Header({ onToggleSidebar, mosqueName }) {
+function Header({ onToggleSidebar, mosqueName, onToggleTheme, currentTheme }) {
     return (
         <header className="header">
             <div className="container header-container">
@@ -28,6 +28,25 @@ function Header({ onToggleSidebar, mosqueName }) {
                     </div>
                 </div>
                 <div className="header-right">
+                    <button 
+                        className="theme-toggle-btn" 
+                        onClick={onToggleTheme}
+                        aria-label="Toggle Theme"
+                        style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border-color)',
+                            padding: '8px',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'var(--text-primary)',
+                            marginRight: '1rem'
+                        }}
+                    >
+                        {currentTheme === 'dark' ? '☀️' : '🌙'}
+                    </button>
                     <div className="header-info">
                         <span className="header-label">Today</span>
                         <span className="header-value">{new Date().toLocaleDateString('en-GB')}</span>

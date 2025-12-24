@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import './ImamSalary.css';
 
-function ImamSalary({ members, imamSalaryPayments, onDeletePayment }) {
+function ImamSalary({ members, imamSalaryPayments, onDeletePayment, isReadOnly }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState('all');
 

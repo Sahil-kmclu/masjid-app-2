@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import './Expenses.css';
 
-function Expenses({ expenses, onDeleteExpense }) {
+function Expenses({ expenses, onDeleteExpense, isReadOnly }) {
     const [searchTerm, setSearchTerm] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
 

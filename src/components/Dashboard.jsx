@@ -1,98 +1,114 @@
 import { useMemo } from 'react';
 import './Dashboard.css';
 
-function Dashboard({ members, payments, imamSalaryPayments, mosqueIncome, expenses }) {
+function Dashboard({ members = [], payments = [], imamSalaryPayments = [], mosqueIncome = [], expenses = [], isReadOnly }) {
     const stats = useMemo(() => {
+        // Ensure all inputs are arrays to prevent crashes
+        const safeMembers = Array.isArray(members) ? members : [];
+        const safePayments = Array.isArray(payments) ? payments : [];
+        const safeImamSalary = Array.isArray(imamSalaryPayments) ? imamSalaryPayments : [];
+        const safeMosqueIncome = Array.isArray(mosqueIncome) ? mosqueIncome : [];
+        const safeExpenses = Array.isArray(expenses) ? expenses : [];
+
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
 
-        const currentMonthPayments = payments.filter(p => {
+        const currentMonthPayments = safePayments.filter(p => {
+            if (!p || !p.month) return false;
             const paymentDate = new Date(p.month + '-01');
             return paymentDate.getMonth() === currentMonth &&
                 paymentDate.getFullYear() === currentYear;
         });
 
         const totalCollected = currentMonthPayments.reduce(
-            (sum, p) => sum + (parseFloat(p.amount) || 0), 0
+            (sum, p) => sum + (parseFloat(p?.amount) || 0), 0
         );
 
-        const expectedAmount = members.reduce(
-            (sum, m) => sum + (parseFloat(m.monthlyAmount) || 0), 0
+        const expectedAmount = safeMembers.reduce(
+            (sum, m) => sum + (parseFloat(m?.monthlyAmount) || 0), 0
         );
-
-        const pendingAmount = expectedAmount - totalCollected;
-
-        const paidMemberIds = new Set(currentMonthPayments.map(p => p.memberId));
-        const pendingMembers = members.filter(m => !paidMemberIds.has(m.id));
 
         // Imam Salary stats
         const sep2020 = new Date('2020-09-01');
-        const allImamSalary = (imamSalaryPayments || []).filter(p => {
+        const allImamSalary = safeImamSalary.filter(p => {
+            if (!p || !p.month) return false;
             const paymentDate = new Date(p.month + '-01');
             return paymentDate >= sep2020;
         });
 
         const totalImamSalary = allImamSalary.reduce(
-            (sum, p) => sum + (parseFloat(p.amount) || 0), 0
+            (sum, p) => sum + (parseFloat(p?.amount) || 0), 0
         );
 
-        const currentMonthImamSalary = allImamSalary.filter(p => {
+        const currentMonthImamSalaryList = allImamSalary.filter(p => {
             const paymentDate = new Date(p.month + '-01');
             return paymentDate.getMonth() === currentMonth &&
                 paymentDate.getFullYear() === currentYear;
         });
 
-        const monthlyImamSalary = currentMonthImamSalary.reduce(
-            (sum, p) => sum + (parseFloat(p.amount) || 0), 0
+        const monthlyImamSalary = currentMonthImamSalaryList.reduce(
+            (sum, p) => sum + (parseFloat(p?.amount) || 0), 0
         );
+
+        // Combined Stats (General + Imam Salary) for Main Dashboard Cards
+        // A member is considered "Paid" if they have made ANY payment (General or Imam Salary) this month
+        const allCurrentMonthPayments = [...currentMonthPayments, ...currentMonthImamSalaryList];
+        
+        const totalCollectedCombined = allCurrentMonthPayments.reduce(
+            (sum, p) => sum + (parseFloat(p?.amount) || 0), 0
+        );
+
+        const paidMemberIds = new Set(allCurrentMonthPayments.map(p => p?.memberId).filter(Boolean));
+        const pendingMembers = safeMembers.filter(m => m && !paidMemberIds.has(m.id));
+        const pendingAmount = expectedAmount - totalCollectedCombined;
 
         // Mosque Income stats
-        const allMosqueIncome = mosqueIncome || [];
-        const totalMosqueIncome = allMosqueIncome.reduce(
-            (sum, income) => sum + (parseFloat(income.amount) || 0), 0
+        const totalMosqueIncome = safeMosqueIncome.reduce(
+            (sum, income) => sum + (parseFloat(income?.amount) || 0), 0
         );
 
-        const currentMonthIncome = allMosqueIncome.filter(income => {
+        const currentMonthIncome = safeMosqueIncome.filter(income => {
+            if (!income || !income.date) return false;
             const incomeDate = new Date(income.date);
             return incomeDate.getMonth() === currentMonth &&
                 incomeDate.getFullYear() === currentYear;
         });
 
         const monthlyMosqueIncome = currentMonthIncome.reduce(
-            (sum, income) => sum + (parseFloat(income.amount) || 0), 0
+            (sum, income) => sum + (parseFloat(income?.amount) || 0), 0
         );
 
         // Expense stats
-        const allExpenses = expenses || [];
-        const totalExpenses = allExpenses.reduce(
-            (sum, expense) => sum + (parseFloat(expense.amount) || 0), 0
+        const totalExpenses = safeExpenses.reduce(
+            (sum, expense) => sum + (parseFloat(expense?.amount) || 0), 0
         );
 
-        const currentMonthExpenses = allExpenses.filter(expense => {
+        const currentMonthExpenses = safeExpenses.filter(expense => {
+            if (!expense || !expense.date) return false;
             const expenseDate = new Date(expense.date);
             return expenseDate.getMonth() === currentMonth &&
                 expenseDate.getFullYear() === currentYear;
         });
 
         const monthlyExpenses = currentMonthExpenses.reduce(
-            (sum, expense) => sum + (parseFloat(expense.amount) || 0), 0
+            (sum, expense) => sum + (parseFloat(expense?.amount) || 0), 0
         );
 
         // Calculate total income and remaining balance
         // Use all payments for all-time income, not just filtered ones if available
-        const allTimeIncome = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+        const allTimeIncome = safePayments.reduce((sum, p) => sum + parseFloat(p?.amount || 0), 0);
         const totalIncome = allTimeIncome + totalImamSalary + totalMosqueIncome;
         const remainingBalance = totalIncome - totalExpenses;
 
         return {
-            totalMembers: members.length,
+            totalMembers: safeMembers.length,
             paidMembers: paidMemberIds.size,
             pendingMembers: pendingMembers.length,
-            totalCollected,
+            totalCollected: totalCollectedCombined,
             expectedAmount,
             pendingAmount,
             completionRate: expectedAmount > 0
-                ? ((totalCollected / expectedAmount) * 100).toFixed(1)
+                ? ((totalCollectedCombined / expectedAmount) * 100).toFixed(1)
                 : 0,
             totalImamSalary,
             monthlyImamSalary,
@@ -105,15 +121,59 @@ function Dashboard({ members, payments, imamSalaryPayments, mosqueIncome, expens
         };
     }, [members, payments, imamSalaryPayments, mosqueIncome, expenses]);
 
-    const recentPayments = useMemo(() => {
-        return [...payments]
-            .sort((a, b) => new Date(b.recordedAt) - new Date(a.recordedAt))
-            .slice(0, 5)
-            .map(payment => ({
-                ...payment,
-                memberName: members.find(m => m.id === payment.memberId)?.name || 'Unknown',
-            }));
-    }, [payments, members]);
+    const yearlyAnalytics = useMemo(() => {
+        const safePayments = Array.isArray(payments) ? payments : [];
+        const safeImamSalary = Array.isArray(imamSalaryPayments) ? imamSalaryPayments : [];
+        const safeMosqueIncome = Array.isArray(mosqueIncome) ? mosqueIncome : [];
+        const safeExpenses = Array.isArray(expenses) ? expenses : [];
+
+        const last12Months = [];
+        const today = new Date();
+
+        for (let i = 11; i >= 0; i--) {
+            const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const month = d.getMonth();
+            const year = d.getFullYear();
+            const label = d.toLocaleDateString('en-US', { month: 'short' });
+
+            // Calculate Income for this month
+            const monthlyPayments = safePayments.filter(p => {
+                if (!p || !p.month) return false;
+                const pDate = new Date(p.month + '-01');
+                return pDate.getMonth() === month && pDate.getFullYear() === year;
+            }).reduce((sum, p) => sum + (parseFloat(p?.amount) || 0), 0);
+
+            const monthlyImamSalary = safeImamSalary.filter(p => {
+                if (!p || !p.month) return false;
+                const pDate = new Date(p.month + '-01');
+                return pDate.getMonth() === month && pDate.getFullYear() === year;
+            }).reduce((sum, p) => sum + (parseFloat(p?.amount) || 0), 0);
+
+            const monthlyMosqueIncome = safeMosqueIncome.filter(i => {
+                if (!i || !i.date) return false;
+                const iDate = new Date(i.date);
+                return iDate.getMonth() === month && iDate.getFullYear() === year;
+            }).reduce((sum, i) => sum + (parseFloat(i?.amount) || 0), 0);
+
+            const totalIncome = monthlyPayments + monthlyImamSalary + monthlyMosqueIncome;
+
+            // Calculate Expense for this month
+            const monthlyExpenses = safeExpenses.filter(e => {
+                if (!e || !e.date) return false;
+                const eDate = new Date(e.date);
+                return eDate.getMonth() === month && eDate.getFullYear() === year;
+            }).reduce((sum, e) => sum + (parseFloat(e?.amount) || 0), 0);
+
+            last12Months.push({
+                label,
+                income: totalIncome,
+                expense: monthlyExpenses
+            });
+        }
+        return last12Months;
+    }, [payments, imamSalaryPayments, mosqueIncome, expenses]);
+
+    const maxVal = Math.max(...yearlyAnalytics.map(d => Math.max(d.income, d.expense)), 100); // Avoid divide by zero
 
     return (
         <div className="dashboard fade-in">
@@ -260,26 +320,82 @@ function Dashboard({ members, payments, imamSalaryPayments, mosqueIncome, expens
                 </div>
 
                 <div className="card">
-                    <h3>Recent Payments</h3>
-                    <div className="recent-payments-list">
-                        {recentPayments.length === 0 ? (
-                            <p className="text-muted">No payments recorded yet</p>
-                        ) : (
-                            recentPayments.map((payment) => (
-                                <div key={payment.id} className="recent-payment-item">
-                                    <div>
-                                        <div className="payment-member">{payment.memberName}</div>
-                                        <div className="payment-date">
-                                            {new Date(payment.month + '-01').toLocaleDateString('en-US', {
-                                                month: 'short',
-                                                year: 'numeric'
-                                            })}
-                                        </div>
-                                    </div>
-                                    <div className="payment-amount">₹{parseFloat(payment.amount).toLocaleString()}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                        <h3>Yearly Analytics</h3>
+                        <div style={{ display: 'flex', gap: '10px', fontSize: '0.8rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div style={{ width: '10px', height: '10px', background: '#10b981', borderRadius: '2px' }}></div>
+                                <span>Income</span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <div style={{ width: '10px', height: '10px', background: '#ef4444', borderRadius: '2px' }}></div>
+                                <span>Expense</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'flex-end', 
+                        justifyContent: 'space-between', 
+                        height: '200px', 
+                        paddingTop: '20px',
+                        gap: '4px'
+                    }}>
+                        {yearlyAnalytics.map((item, index) => (
+                            <div key={index} style={{ 
+                                display: 'flex', 
+                                flexDirection: 'column', 
+                                alignItems: 'center', 
+                                flex: 1,
+                                height: '100%'
+                            }}>
+                                <div style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'flex-end', 
+                                    height: '100%', 
+                                    gap: '2px',
+                                    width: '100%',
+                                    justifyContent: 'center'
+                                }}>
+                                    {/* Income Bar */}
+                                    <div 
+                                        title={`Income: ₹${item.income}`}
+                                        style={{ 
+                                            width: '8px', 
+                                            background: '#10b981', 
+                                            height: `${(item.income / maxVal) * 100}%`,
+                                            borderRadius: '2px 2px 0 0',
+                                            minHeight: item.income > 0 ? '4px' : '0',
+                                            transition: 'height 0.3s ease'
+                                        }}
+                                    />
+                                    {/* Expense Bar */}
+                                    <div 
+                                        title={`Expense: ₹${item.expense}`}
+                                        style={{ 
+                                            width: '8px', 
+                                            background: '#ef4444', 
+                                            height: `${(item.expense / maxVal) * 100}%`,
+                                            borderRadius: '2px 2px 0 0',
+                                            minHeight: item.expense > 0 ? '4px' : '0',
+                                            transition: 'height 0.3s ease'
+                                        }}
+                                    />
                                 </div>
-                            ))
-                        )}
+                                <div style={{ 
+                                    marginTop: '8px', 
+                                    fontSize: '0.7rem', 
+                                    color: 'var(--text-secondary)',
+                                    transform: 'rotate(-45deg)',
+                                    transformOrigin: 'top left',
+                                    whiteSpace: 'nowrap',
+                                    marginTop: '15px'
+                                }}>
+                                    {item.label}
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

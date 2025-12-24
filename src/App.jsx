@@ -26,12 +26,28 @@ function App() {
   const [mosqueIncome, setMosqueIncome] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
+
+  // Theme Effect
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   // Check for logged in user on mount
   useEffect(() => {
-    const savedUser = localStorage.getItem('masjid_current_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+    try {
+        const savedUser = localStorage.getItem('masjid_current_user');
+        if (savedUser) {
+          setUser(JSON.parse(savedUser));
+        }
+    } catch (error) {
+        console.error("Failed to load user:", error);
+        localStorage.removeItem('masjid_current_user'); // Clear corrupted data
     }
   }, []);
 
@@ -96,11 +112,30 @@ function App() {
     if (!savedMembers && localStorage.getItem('masjid_members')) {
         // Only migrate if we are admin
         if (user.role === 'admin') {
-            setMembers(JSON.parse(localStorage.getItem('masjid_members')));
-            setPayments(JSON.parse(localStorage.getItem('masjid_payments') || '[]'));
-            setImamSalaryPayments(JSON.parse(localStorage.getItem('masjid_imam_salary_payments') || '[]'));
-            setMosqueIncome(JSON.parse(localStorage.getItem('masjid_mosque_income') || '[]'));
-            setExpenses(JSON.parse(localStorage.getItem('masjid_expenses') || '[]'));
+            try {
+                const legacyMembers = JSON.parse(localStorage.getItem('masjid_members') || '[]');
+                setMembers(Array.isArray(legacyMembers) ? legacyMembers : []);
+                
+                const legacyPayments = JSON.parse(localStorage.getItem('masjid_payments') || '[]');
+                setPayments(Array.isArray(legacyPayments) ? legacyPayments : []);
+                
+                const legacySalaries = JSON.parse(localStorage.getItem('masjid_imam_salary_payments') || '[]');
+                setImamSalaryPayments(Array.isArray(legacySalaries) ? legacySalaries : []);
+                
+                const legacyIncome = JSON.parse(localStorage.getItem('masjid_mosque_income') || '[]');
+                setMosqueIncome(Array.isArray(legacyIncome) ? legacyIncome : []);
+                
+                const legacyExpenses = JSON.parse(localStorage.getItem('masjid_expenses') || '[]');
+                setExpenses(Array.isArray(legacyExpenses) ? legacyExpenses : []);
+            } catch (e) {
+                console.error("Migration error:", e);
+                // Fallback to empty arrays on error
+                setMembers([]);
+                setPayments([]);
+                setImamSalaryPayments([]);
+                setMosqueIncome([]);
+                setExpenses([]);
+            }
             
             // Optional: Clear legacy data after migration to prevent confusion? 
             // Better keep it for safety for now.
@@ -108,20 +143,40 @@ function App() {
         }
     }
 
-    if (savedMembers) setMembers(JSON.parse(savedMembers));
-    else setMembers([]);
+    try {
+        if (savedMembers) {
+          const parsed = JSON.parse(savedMembers);
+          setMembers(Array.isArray(parsed) ? parsed : []);
+        } else setMembers([]);
+    } catch (e) { setMembers([]); }
 
-    if (savedPayments) setPayments(JSON.parse(savedPayments));
-    else setPayments([]);
+    try {
+        if (savedPayments) {
+          const parsed = JSON.parse(savedPayments);
+          setPayments(Array.isArray(parsed) ? parsed : []);
+        } else setPayments([]);
+    } catch (e) { setPayments([]); }
 
-    if (savedImamSalary) setImamSalaryPayments(JSON.parse(savedImamSalary));
-    else setImamSalaryPayments([]);
+    try {
+        if (savedImamSalary) {
+          const parsed = JSON.parse(savedImamSalary);
+          setImamSalaryPayments(Array.isArray(parsed) ? parsed : []);
+        } else setImamSalaryPayments([]);
+    } catch (e) { setImamSalaryPayments([]); }
 
-    if (savedMosqueIncome) setMosqueIncome(JSON.parse(savedMosqueIncome));
-    else setMosqueIncome([]);
+    try {
+        if (savedMosqueIncome) {
+          const parsed = JSON.parse(savedMosqueIncome);
+          setMosqueIncome(Array.isArray(parsed) ? parsed : []);
+        } else setMosqueIncome([]);
+    } catch (e) { setMosqueIncome([]); }
 
-    if (savedExpenses) setExpenses(JSON.parse(savedExpenses));
-    else setExpenses([]);
+    try {
+        if (savedExpenses) {
+          const parsed = JSON.parse(savedExpenses);
+          setExpenses(Array.isArray(parsed) ? parsed : []);
+        } else setExpenses([]);
+    } catch (e) { setExpenses([]); }
 
   }, [user]);
 
@@ -194,7 +249,7 @@ function App() {
   };
 
   if (!user) {
-    return <Auth onLogin={setUser} />;
+    return <Auth onLogin={setUser} currentTheme={theme} onToggleTheme={toggleTheme} />;
   }
 
   if (user.role === 'super_admin') {
@@ -317,7 +372,7 @@ function App() {
       case 'add-member':
         return <AddMember onAddMember={addMember} onCancel={() => setCurrentView('members')} />;
       case 'record-payment':
-        return <RecordPayment members={members} onAddPayment={addPayment} />;
+        return <RecordPayment members={members} payments={payments} onAddPayment={addPayment} />;
       case 'pending':
         return <PendingPayments members={members} payments={payments} isReadOnly={isReadOnly} />;
       case 'imam-salary':
@@ -330,7 +385,7 @@ function App() {
           />
         );
       case 'record-imam-salary':
-        return <RecordImamSalary members={members} onAddPayment={addImamSalaryPayment} />;
+        return <RecordImamSalary members={members} imamSalaryPayments={imamSalaryPayments} onAddPayment={addImamSalaryPayment} />;
       case 'mosque-income':
         return (
           <MosqueIncome
@@ -358,7 +413,12 @@ function App() {
 
   return (
     <div className="app">
-      <Header onToggleSidebar={toggleSidebar} mosqueName={user.name} />
+      <Header 
+        onToggleSidebar={toggleSidebar} 
+        mosqueName={user.role === 'super_admin' ? 'Super Admin Panel' : user.name}
+        onToggleTheme={toggleTheme} 
+        currentTheme={theme} 
+      />
       <div className="app-container">
         <Sidebar 
           currentView={currentView} 
@@ -370,6 +430,8 @@ function App() {
           onClose={closeSidebar}
           isReadOnly={isReadOnly}
           onLogout={handleLogout}
+          currentTheme={theme}
+          onToggleTheme={toggleTheme}
         />
         <main className="main-content">
           <div className="container">

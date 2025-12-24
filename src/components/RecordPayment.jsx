@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './RecordPayment.css';
 
-function RecordPayment({ members, onAddPayment }) {
+function RecordPayment({ members, payments = [], onAddPayment }) {
     const currentDate = new Date();
     const currentMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
 
@@ -47,6 +47,16 @@ function RecordPayment({ members, onAddPayment }) {
 
         if (!formData.month) {
             newErrors.month = 'Please select a month';
+        } else if (formData.memberId) {
+            // Check for duplicate payment
+            const isDuplicate = payments.some(p => 
+                p.memberId === formData.memberId && 
+                p.month === formData.month
+            );
+
+            if (isDuplicate) {
+                newErrors.month = 'Payment already done this month for this member';
+            }
         }
 
         if (!formData.amount) {
