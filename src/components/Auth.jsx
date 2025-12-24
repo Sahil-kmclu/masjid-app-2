@@ -481,7 +481,7 @@ function Auth({ onLogin, currentTheme, onToggleTheme }) {
                 <div className="auth-header">
                     <span className="auth-logo">🕌</span>
                     <h2 className="auth-title">Masjid Manager</h2>
-                    <p className="auth-subtitle">Donation & Expense Tracking System</p>
+                    <p className="auth-subtitle">Tracking System</p>
                 </div>
 
                 <div className="auth-tabs">

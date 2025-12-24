@@ -23,7 +23,7 @@ function Header({ onToggleSidebar, mosqueName, onToggleTheme, currentTheme }) {
                         </svg>
                         <div>
                             <h1 className="logo-text">{mosqueName || 'Masjid Manager'}</h1>
-                            <p className="logo-subtitle">Donation Management System</p>
+                            <p className="logo-subtitle">Tracking System</p>
                         </div>
                     </div>
                 </div>

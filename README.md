@@ -1,4 +1,4 @@
-# Masjid Donation Tracker 🕌
+# Masjid Manager Tracking System 🕌
 
 A modern, responsive web application built with React to manage monthly donations for the masjid imam's salary. Track members, record payments, and send automated reminders for pending donations.
 
